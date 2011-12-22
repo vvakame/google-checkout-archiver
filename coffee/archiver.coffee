@@ -3,86 +3,129 @@ debug = true
 log = ->
   console.log.apply(console, arguments) if debug
 
-isHeader = (el)->
-  el.children("th").length != 0
-
-isData = (el)->
-  el.children("td").length != 0
-
-raiseError = ->
-  throw new Error()
-
-process = ->
+# OrderNumber を収集する
+collectOrderNumbers = ->
+  orderNumberList = []
   $("a#orderNumLink").each ->
     el = $(this)
     orderNumber = el.text()
-    log orderNumber
+    orderNumberList.push orderNumber
 
-  $("#inboxTable tr").each ->
-    el = $(this)
+  return orderNumberList
 
-    if isHeader el
-      processHeader el
-    else if isData el
-      processData el
-    else
-      raiseError()
+#### DOMから必要なパーツを拾い集める
 
-processHeader = (el)->
-  check = $('<input type="checkbox"/>')
+pickupButton = (orderNumber) ->
+  $("input#actionButton#{orderNumber}")
 
+pickupTableRow = (orderNumber) ->
+  td = $("td#cell#{orderNumber}")
+  td.parent()
+
+pickupFooterRow = ->
+  footerTable = $(".tfoot")
+  tr = footerTable.find "tr"
+  tr.first()
+
+#### DOMに要素を追加する
+
+insertCheckbox = (tableRow, id)->
+  check = $("<input type=\"checkbox\" id=\"#{id}\"/>")
   td = $("<td/>").append(check)
-  el.prepend(td)
+  tableRow.prepend(td)
+  check
 
-processData = (el)->
-  func = createAction el
+#### 要素の判定
 
-  check = $('<input type="checkbox"/>')
+isArchiveButton = (button)->
+  button.attr("name") == "archiveButton"
 
-  check.click func if func?
+isShipButton = (button)->
+  button.attr("name") == "closeOrderButton"
 
-  td = $("<td/>").append(check)
-  el.prepend(td)
+#### ボタン押下後の処理
 
+createArchiveFunction = (button) ->
+  -> button.click()
 
-createAction = (el)->
+createShipFunction = (button)->
+  func = ->
+    button.click()
+    iframe = $("#shipItemsDiv")
 
-  pickupArchiveButton = (el)->
-    button = $("input[name=archiveButton]", el)
-    if button.length == 1
-      return button.first()
-
-    return null
-
-  pickupShipButton = (el)->
-    button = $("input[name=closeOrderButton]", el)
-    if button.length == 1
-      return button.first()
-
-    return null
-
-  createArchiveFunction = (el)->
-    button = pickupArchiveButton el
-    return null if not button?
-
-    func = ->
+    iframe.load ->
+      button = $(this.contentDocument).find("input[name=shipButton]")
       button.click()
-    return func
 
-  createShipFunction = (el)->
-    button = pickupShipButton el
-    return null if not button?
+  return func
 
-    func = ->
-      button.click()
-      iframe = $("#shipItemsDiv")
+#### 各モデル&View作成を行うクラス
 
-      iframe.load ->
-        button = $(this.contentDocument).find("input[name=shipButton]")
-        button.click()
+# 1明細を表す
+class OrderData
+  orderNumber:null
+  processFunction: null
+  enabled: false
 
-    return func
+  constructor: (@orderNumber)->
+    _.bindAll @
 
-  return createArchiveFunction(el) || createShipFunction(el)
+    button = pickupButton orderNumber
 
-process()
+    if isArchiveButton button
+      @processFunction = createArchiveFunction button
+    else if isShipButton button
+      @processFunction = createShipFunction button
+
+    # construct UI
+    checkbox = insertCheckbox (pickupTableRow @orderNumber), "vv-archiver-#{@orderNumber}"
+    checkbox.change (event)=>
+      @enabled = checkbox.attr('checked') == "checked"
+
+  process: ->
+    log "process!! #{@orderNumber}"
+    @processFunction() if @enabled
+
+  getOrderNumber: ->
+    @orderNumber
+
+  getEnabled: ->
+    @enabled
+
+# 表示されている全明細を表す
+class OrderDataList
+  orderDataList = []
+
+  constructor: ->
+    _.bindAll @
+
+    orderNumberList = collectOrderNumbers()
+    @orderDataList = _.map orderNumberList, (orderNumber)-> new OrderData(orderNumber)
+
+    # construct UI
+    checkbox = insertCheckbox $(".theader"), "vv-archiver-parent"
+
+  process: ->
+    log "start process"
+    enabledList = _.filter @orderDataList, (data)-> data.getEnabled()
+    log enabledList
+    enabledList[0].process() if enabledList.length != 0
+
+# 画面下部にArchiveボタンを表示
+class ProcessView
+  orderDataList: []
+
+  constructor: ->
+    _.bindAll @
+
+    @orderDataList = new OrderDataList()
+
+    # construct UI
+    footerRow = pickupFooterRow()
+    button = $("<input type=\"button\" value=\"Archive\" />")
+    button.click => @orderDataList.process()
+    footerRow.prepend button
+
+#### 実際の処理を開始する
+
+new ProcessView()
