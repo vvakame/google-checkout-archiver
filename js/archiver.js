@@ -35,10 +35,11 @@ pickupFooterRow = function() {
   return tr.first();
 };
 
-insertCheckbox = function(tableRow, id) {
+insertCheckbox = function(tableRow, id, tagName) {
   var check, td;
+  tagName = tagName || "td";
   check = $("<input type=\"checkbox\" id=\"" + id + "\"/>");
-  td = $("<td/>").append(check);
+  td = $("<" + tagName + "/>").append(check);
   tableRow.prepend(td);
   return check;
 };
@@ -80,7 +81,7 @@ OrderData = (function() {
   OrderData.prototype.enabled = false;
 
   function OrderData(orderNumber) {
-    var button, checkbox,
+    var button, checkbox, row,
       _this = this;
     this.orderNumber = orderNumber;
     _.bindAll(this);
@@ -90,23 +91,42 @@ OrderData = (function() {
     } else if (isShipButton(button)) {
       this.processFunction = createShipFunction(button);
     }
-    checkbox = insertCheckbox(pickupTableRow(this.orderNumber), "vv-archiver-" + this.orderNumber);
-    checkbox.change(function(event) {
+    row = pickupTableRow(this.orderNumber);
+    checkbox = insertCheckbox(row, "vv-archiver-" + this.orderNumber);
+    checkbox.change(function() {
       return _this.enabled = checkbox.attr('checked') === "checked";
     });
   }
 
   OrderData.prototype.process = function() {
-    log("process!! " + this.orderNumber);
-    if (this.enabled) return this.processFunction();
+    return log("process!! " + this.orderNumber);
   };
 
   OrderData.prototype.getOrderNumber = function() {
     return this.orderNumber;
   };
 
+  OrderData.prototype.getCheckbox = function() {
+    return $("#vv-archiver-" + this.orderNumber);
+  };
+
   OrderData.prototype.getEnabled = function() {
     return this.enabled;
+  };
+
+  OrderData.prototype.setCheck = function(enabled) {
+    var checkbox;
+    if (enabled) {
+      this.enabled = true;
+      checkbox = this.getCheckbox();
+      checkbox.attr("checked", "checked");
+      return checkbox.change();
+    } else {
+      this.enabled = false;
+      checkbox = this.getCheckbox();
+      checkbox.attr("checked", null);
+      return checkbox.change();
+    }
   };
 
   return OrderData;
@@ -114,28 +134,78 @@ OrderData = (function() {
 })();
 
 OrderDataList = (function() {
-  var orderDataList;
 
-  orderDataList = [];
+  OrderDataList.prototype.orderDataList = [];
+
+  OrderDataList.prototype.all = false;
 
   function OrderDataList() {
-    var checkbox, orderNumberList;
+    var checkbox, orderNumberList,
+      _this = this;
     _.bindAll(this);
     orderNumberList = collectOrderNumbers();
     this.orderDataList = _.map(orderNumberList, function(orderNumber) {
       return new OrderData(orderNumber);
     });
-    checkbox = insertCheckbox($(".theader"), "vv-archiver-parent");
+    checkbox = insertCheckbox($(".theader"), "vv-archiver-parent", "th");
+    checkbox.change(function() {
+      return _.map(_this.orderDataList, function(data) {
+        var enable;
+        enable = checkbox.attr('checked') === "checked";
+        if (enable) {
+          data.getCheckbox().attr("disabled", "true");
+        } else {
+          data.getCheckbox().attr("disabled", null);
+        }
+        return _this.all = enable;
+      });
+    });
   }
 
   OrderDataList.prototype.process = function() {
     var enabledList;
     log("start process");
-    enabledList = _.filter(this.orderDataList, function(data) {
-      return data.getEnabled();
-    });
-    log(enabledList);
-    if (enabledList.length !== 0) return enabledList[0].process();
+    if (this.all) {
+      log("process all invoice");
+      return this.save("all");
+    } else {
+      log("process selected invoice");
+      enabledList = _.filter(this.orderDataList, function(data) {
+        return data.getEnabled();
+      });
+      this.save(_.map(enabledList, function(data) {
+        return data.getOrderNumber();
+      }));
+      if (enabledList.length !== 0) return enabledList[0].process();
+    }
+  };
+
+  OrderDataList.prototype.getCheckbox = function() {
+    return $("#vv-archiver-parent");
+  };
+
+  OrderDataList.prototype.getOrderDataList = function() {
+    return this.orderDataList;
+  };
+
+  OrderDataList.prototype.setCheck = function(all) {
+    var checkbox;
+    if (all) {
+      this.all = true;
+      checkbox = this.getCheckbox();
+      checkbox.attr("checked", "checked");
+      return checkbox.change();
+    } else {
+      this.all = false;
+      checkbox = this.getCheckbox();
+      checkbox.attr("checked", null);
+      return checkbox.change();
+    }
+  };
+
+  OrderDataList.prototype.save = function(processList) {
+    log(processList);
+    return localStorage["processList"] = processList;
   };
 
   return OrderDataList;
@@ -144,10 +214,10 @@ OrderDataList = (function() {
 
 ProcessView = (function() {
 
-  ProcessView.prototype.orderDataList = [];
+  ProcessView.prototype.orderDataList = {};
 
   function ProcessView() {
-    var button, footerRow,
+    var button, footerRow, orderNumberList, selectedOrderList, target,
       _this = this;
     _.bindAll(this);
     this.orderDataList = new OrderDataList();
@@ -157,6 +227,26 @@ ProcessView = (function() {
       return _this.orderDataList.process();
     });
     footerRow.prepend(button);
+    target = localStorage["processList"];
+    if (target == null) return;
+    if (target === "all") {
+      this.orderDataList.setCheck(true);
+    } else {
+      orderNumberList = target.split(",");
+      selectedOrderList = [];
+      _.map(this.orderDataList.getOrderDataList(), function(data) {
+        return _.map(orderNumberList, function(orderNumber) {
+          if (orderNumber === data.getOrderNumber()) {
+            return selectedOrderList.push(data);
+          }
+        });
+      });
+      log(selectedOrderList);
+      _.map(selectedOrderList, function(data) {
+        return data.setCheck(true);
+      });
+    }
+    this.orderDataList.process();
   }
 
   return ProcessView;

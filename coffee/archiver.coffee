@@ -29,9 +29,10 @@ pickupFooterRow = ->
 
 #### DOMに要素を追加する
 
-insertCheckbox = (tableRow, id)->
+insertCheckbox = (tableRow, id, tagName)->
+  tagName = tagName || "td"
   check = $("<input type=\"checkbox\" id=\"#{id}\"/>")
-  td = $("<td/>").append(check)
+  td = $("<#{tagName}/>").append(check)
   tableRow.prepend(td)
   check
 
@@ -64,10 +65,10 @@ createShipFunction = (button)->
 # 1明細を表す
 class OrderData
   orderNumber:null
-  processFunction: null
-  enabled: false
+  processFunction:null
+  enabled:false
 
-  constructor: (@orderNumber)->
+  constructor:(@orderNumber)->
     _.bindAll @
 
     button = pickupButton orderNumber
@@ -78,44 +79,97 @@ class OrderData
       @processFunction = createShipFunction button
 
     # construct UI
-    checkbox = insertCheckbox (pickupTableRow @orderNumber), "vv-archiver-#{@orderNumber}"
-    checkbox.change (event)=>
+    row = pickupTableRow @orderNumber
+    checkbox = insertCheckbox row, "vv-archiver-#{@orderNumber}"
+    checkbox.change =>
       @enabled = checkbox.attr('checked') == "checked"
 
-  process: ->
+  process:->
     log "process!! #{@orderNumber}"
-    @processFunction() if @enabled
+  # @processFunction() if @enabled
 
-  getOrderNumber: ->
+  getOrderNumber:->
     @orderNumber
 
-  getEnabled: ->
+  getCheckbox:->
+    $("#vv-archiver-#{@orderNumber}")
+
+  getEnabled:->
     @enabled
+
+  setCheck:(enabled)->
+    if(enabled)
+      @enabled = true
+      checkbox = @getCheckbox()
+      checkbox.attr("checked", "checked")
+      checkbox.change()
+    else
+      @enabled = false
+      checkbox = @getCheckbox()
+      checkbox.attr("checked", null)
+      checkbox.change()
 
 # 表示されている全明細を表す
 class OrderDataList
-  orderDataList = []
+  orderDataList :[]
+  all :false
 
-  constructor: ->
+  constructor:->
     _.bindAll @
 
     orderNumberList = collectOrderNumbers()
     @orderDataList = _.map orderNumberList, (orderNumber)-> new OrderData(orderNumber)
 
     # construct UI
-    checkbox = insertCheckbox $(".theader"), "vv-archiver-parent"
+    checkbox = insertCheckbox $(".theader"), "vv-archiver-parent", "th"
+    checkbox.change =>
+      _.map @orderDataList, (data)=>
+        enable = checkbox.attr('checked') == "checked"
+        if enable
+          data.getCheckbox().attr("disabled", "true")
+        else
+          data.getCheckbox().attr("disabled", null)
+        @all = enable
 
-  process: ->
+  process:->
     log "start process"
-    enabledList = _.filter @orderDataList, (data)-> data.getEnabled()
-    log enabledList
-    enabledList[0].process() if enabledList.length != 0
+    if @all
+      log "process all invoice"
+      @save "all"
+    else
+      log "process selected invoice"
+      enabledList = _.filter @orderDataList, (data)-> data.getEnabled()
+      @save _.map enabledList, (data)-> data.getOrderNumber()
+      enabledList[0].process() if enabledList.length != 0
+
+  getCheckbox:->
+    $("#vv-archiver-parent")
+
+  getOrderDataList:->
+    @orderDataList
+
+  setCheck:(all)->
+    if(all)
+      @all = true
+      checkbox = @getCheckbox()
+      checkbox.attr("checked", "checked")
+      checkbox.change()
+    else
+      @all = false
+      checkbox = @getCheckbox()
+      checkbox.attr("checked", null)
+      checkbox.change()
+
+  save:(processList)->
+    log processList
+    localStorage["processList"] = processList
+
 
 # 画面下部にArchiveボタンを表示
 class ProcessView
-  orderDataList: []
+  orderDataList:{}
 
-  constructor: ->
+  constructor:->
     _.bindAll @
 
     @orderDataList = new OrderDataList()
@@ -125,6 +179,26 @@ class ProcessView
     button = $("<input type=\"button\" value=\"Archive\" />")
     button.click => @orderDataList.process()
     footerRow.prepend button
+
+    # restore state from localStorege
+    target = localStorage["processList"]
+    return unless target?
+
+    if target == "all"
+      @orderDataList.setCheck true
+    else
+      orderNumberList = target.split(",")
+      selectedOrderList = []
+
+      _.map @orderDataList.getOrderDataList(), (data)=>
+        _.map orderNumberList, (orderNumber)=>
+          if orderNumber == data.getOrderNumber()
+            selectedOrderList.push data
+      log selectedOrderList
+      _.map selectedOrderList, (data)->
+        data.setCheck true
+
+    @orderDataList.process()
 
 #### 実際の処理を開始する
 
