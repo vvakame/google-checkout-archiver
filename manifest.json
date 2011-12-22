@@ -1,0 +1,23 @@
+{
+    "name":"Google Checkout Archiver",
+    "description":"Automatic archiver at Googole Checkout",
+    "version":"0.0.1",
+    "icons":{
+        "128":"images/icon_128.png"
+    },
+    "content_scripts":[
+        {
+            "matches":[
+                "https://checkout.google.com/sell/orders*"
+            ],
+            "js":[
+                "js/jquery-1.7.1.js",
+                "js/archiver.js"
+            ],
+            "run_at":"document_end"
+        }
+    ],
+    "permissions":[
+    ]
+}
+
