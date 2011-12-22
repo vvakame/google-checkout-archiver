@@ -1,9 +1,9 @@
-debug = false
+debug = true
 
 log = ->
   console.log.apply(console, arguments) if debug
 
-waitTime = 5000
+waitTime = 3000
 
 # OrderNumber ‚ðŽûW‚·‚é
 collectOrderNumbers = ->
@@ -88,7 +88,7 @@ class OrderData
 
   process:->
     log "process!! #{@orderNumber}"
-  # @processFunction() if @enabled
+    @processFunction()
 
   getOrderNumber:->
     @orderNumber
@@ -138,6 +138,7 @@ class OrderDataList
     if @all
       log "process all invoice"
       @save "all"
+      @orderDataList[0].process() if @orderDataList.length != 0
     else
       log "process selected invoice"
       enabledList = _.filter @orderDataList, (data)-> data.getEnabled()
@@ -163,7 +164,6 @@ class OrderDataList
       checkbox.change()
 
   save:(processList)->
-    log processList
     localStorage["processList"] = processList
 
 

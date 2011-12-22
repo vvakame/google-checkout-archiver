@@ -1,12 +1,12 @@
 var OrderData, OrderDataList, ProcessView, collectOrderNumbers, createArchiveFunction, createShipFunction, debug, insertCheckbox, isArchiveButton, isShipButton, log, pickupButton, pickupFooterRow, pickupTableRow, waitTime;
 
-debug = false;
+debug = true;
 
 log = function() {
   if (debug) return console.log.apply(console, arguments);
 };
 
-waitTime = 5000;
+waitTime = 3000;
 
 collectOrderNumbers = function() {
   var orderNumberList;
@@ -101,7 +101,8 @@ OrderData = (function() {
   }
 
   OrderData.prototype.process = function() {
-    return log("process!! " + this.orderNumber);
+    log("process!! " + this.orderNumber);
+    return this.processFunction();
   };
 
   OrderData.prototype.getOrderNumber = function() {
@@ -169,7 +170,8 @@ OrderDataList = (function() {
     log("start process");
     if (this.all) {
       log("process all invoice");
-      return this.save("all");
+      this.save("all");
+      if (this.orderDataList.length !== 0) return this.orderDataList[0].process();
     } else {
       log("process selected invoice");
       enabledList = _.filter(this.orderDataList, function(data) {
@@ -206,7 +208,6 @@ OrderDataList = (function() {
   };
 
   OrderDataList.prototype.save = function(processList) {
-    log(processList);
     return localStorage["processList"] = processList;
   };
 
