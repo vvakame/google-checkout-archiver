@@ -1,7 +1,9 @@
-debug = true
+debug = false
 
 log = ->
   console.log.apply(console, arguments) if debug
+
+waitTime = 5000
 
 # OrderNumber ‚ğûW‚·‚é
 collectOrderNumbers = ->
@@ -194,11 +196,12 @@ class ProcessView
         _.map orderNumberList, (orderNumber)=>
           if orderNumber == data.getOrderNumber()
             selectedOrderList.push data
-      log selectedOrderList
+
       _.map selectedOrderList, (data)->
         data.setCheck true
 
-    @orderDataList.process()
+    exec = -> button.click()
+    setTimeout exec, waitTime
 
 #### ÀÛ‚Ìˆ—‚ğŠJn‚·‚é
 

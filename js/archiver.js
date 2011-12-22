@@ -1,10 +1,12 @@
-var OrderData, OrderDataList, ProcessView, collectOrderNumbers, createArchiveFunction, createShipFunction, debug, insertCheckbox, isArchiveButton, isShipButton, log, pickupButton, pickupFooterRow, pickupTableRow;
+var OrderData, OrderDataList, ProcessView, collectOrderNumbers, createArchiveFunction, createShipFunction, debug, insertCheckbox, isArchiveButton, isShipButton, log, pickupButton, pickupFooterRow, pickupTableRow, waitTime;
 
-debug = true;
+debug = false;
 
 log = function() {
   if (debug) return console.log.apply(console, arguments);
 };
+
+waitTime = 5000;
 
 collectOrderNumbers = function() {
   var orderNumberList;
@@ -217,7 +219,7 @@ ProcessView = (function() {
   ProcessView.prototype.orderDataList = {};
 
   function ProcessView() {
-    var button, footerRow, orderNumberList, selectedOrderList, target,
+    var button, exec, footerRow, orderNumberList, selectedOrderList, target,
       _this = this;
     _.bindAll(this);
     this.orderDataList = new OrderDataList();
@@ -241,12 +243,14 @@ ProcessView = (function() {
           }
         });
       });
-      log(selectedOrderList);
       _.map(selectedOrderList, function(data) {
         return data.setCheck(true);
       });
     }
-    this.orderDataList.process();
+    exec = function() {
+      return button.click();
+    };
+    setTimeout(exec, waitTime);
   }
 
   return ProcessView;
