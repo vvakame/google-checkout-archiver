@@ -6,16 +6,13 @@ log = function() {
   if (debug) return console.log.apply(console, arguments);
 };
 
-waitTime = 3000;
+waitTime = 2000;
 
 collectOrderNumbers = function() {
   var orderNumberList;
   orderNumberList = [];
   $("a#orderNumLink").each(function() {
-    var el, orderNumber;
-    el = $(this);
-    orderNumber = el.text();
-    return orderNumberList.push(orderNumber);
+    return orderNumberList.push($(this).text());
   });
   return orderNumberList;
 };
@@ -25,15 +22,12 @@ pickupButton = function(orderNumber) {
 };
 
 pickupTableRow = function(orderNumber) {
-  var td;
-  td = $("td#cell" + orderNumber);
-  return td.parent();
+  return $("td#cell" + orderNumber).parent();
 };
 
 pickupFooterRow = function() {
-  var footerTable, tr;
-  footerTable = $(".tfoot");
-  tr = footerTable.find("tr");
+  var tr;
+  tr = $(".tfoot").find("tr");
   return tr.first();
 };
 
@@ -101,7 +95,7 @@ OrderData = (function() {
   }
 
   OrderData.prototype.process = function() {
-    log("process!! " + this.orderNumber);
+    log("process " + this.orderNumber);
     return this.processFunction();
   };
 
@@ -117,19 +111,12 @@ OrderData = (function() {
     return this.enabled;
   };
 
-  OrderData.prototype.setCheck = function(enabled) {
+  OrderData.prototype.setCheck = function() {
     var checkbox;
-    if (enabled) {
-      this.enabled = true;
-      checkbox = this.getCheckbox();
-      checkbox.attr("checked", "checked");
-      return checkbox.change();
-    } else {
-      this.enabled = false;
-      checkbox = this.getCheckbox();
-      checkbox.attr("checked", null);
-      return checkbox.change();
-    }
+    this.enabled = true;
+    checkbox = this.getCheckbox();
+    checkbox.attr("checked", "checked");
+    return checkbox.change();
   };
 
   return OrderData;
@@ -192,23 +179,16 @@ OrderDataList = (function() {
     return this.orderDataList;
   };
 
-  OrderDataList.prototype.setCheck = function(all) {
-    var checkbox;
-    if (all) {
-      this.all = true;
-      checkbox = this.getCheckbox();
-      checkbox.attr("checked", "checked");
-      return checkbox.change();
-    } else {
-      this.all = false;
-      checkbox = this.getCheckbox();
-      checkbox.attr("checked", null);
-      return checkbox.change();
-    }
-  };
-
   OrderDataList.prototype.save = function(processList) {
     return localStorage["processList"] = processList;
+  };
+
+  OrderDataList.prototype.setCheck = function() {
+    var checkbox;
+    this.all = true;
+    checkbox = this.getCheckbox();
+    checkbox.attr("checked", "checked");
+    return checkbox.change();
   };
 
   return OrderDataList;
@@ -220,20 +200,25 @@ ProcessView = (function() {
   ProcessView.prototype.orderDataList = {};
 
   function ProcessView() {
-    var button, exec, footerRow, orderNumberList, selectedOrderList, target,
+    var button, footerRow,
       _this = this;
     _.bindAll(this);
     this.orderDataList = new OrderDataList();
     footerRow = pickupFooterRow();
-    button = $("<input type=\"button\" value=\"Archive\" />");
+    button = $("<input type=\"button\" value=\"Archive\" id=\"vv-archive\" />");
     button.click(function() {
       return _this.orderDataList.process();
     });
     footerRow.prepend(button);
+  }
+
+  ProcessView.prototype.restoreState = function() {
+    var exec, orderNumberList, selectedOrderList, target,
+      _this = this;
     target = localStorage["processList"];
     if (target == null) return;
     if (target === "all") {
-      this.orderDataList.setCheck(true);
+      this.orderDataList.setCheck();
     } else {
       orderNumberList = target.split(",");
       selectedOrderList = [];
@@ -245,17 +230,17 @@ ProcessView = (function() {
         });
       });
       _.map(selectedOrderList, function(data) {
-        return data.setCheck(true);
+        return data.setCheck();
       });
     }
     exec = function() {
-      return button.click();
+      return $("#vv-archive").click();
     };
-    setTimeout(exec, waitTime);
-  }
+    return setTimeout(exec, waitTime);
+  };
 
   return ProcessView;
 
 })();
 
-new ProcessView();
+new ProcessView().restoreState();

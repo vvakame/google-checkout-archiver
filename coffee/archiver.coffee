@@ -3,33 +3,29 @@ debug = true
 log = ->
   console.log.apply(console, arguments) if debug
 
-waitTime = 3000
+waitTime = 2000
 
-# OrderNumber ‚ğûW‚·‚é
+# OrderNumber ã‚’åé›†ã™ã‚‹
 collectOrderNumbers = ->
   orderNumberList = []
   $("a#orderNumLink").each ->
-    el = $(this)
-    orderNumber = el.text()
-    orderNumberList.push orderNumber
+    orderNumberList.push $(@).text()
 
-  return orderNumberList
+  orderNumberList
 
-#### DOM‚©‚ç•K—v‚Èƒp[ƒc‚ğE‚¢W‚ß‚é
+#### DOMã‹ã‚‰å¿…è¦ãªãƒ‘ãƒ¼ãƒ„ã‚’æ‹¾ã„é›†ã‚ã‚‹
 
 pickupButton = (orderNumber) ->
   $("input#actionButton#{orderNumber}")
 
 pickupTableRow = (orderNumber) ->
-  td = $("td#cell#{orderNumber}")
-  td.parent()
+  $("td#cell#{orderNumber}").parent()
 
 pickupFooterRow = ->
-  footerTable = $(".tfoot")
-  tr = footerTable.find "tr"
+  tr = $(".tfoot").find "tr"
   tr.first()
 
-#### DOM‚É—v‘f‚ğ’Ç‰Á‚·‚é
+#### DOMã«è¦ç´ ã‚’è¿½åŠ ã™ã‚‹
 
 insertCheckbox = (tableRow, id, tagName)->
   tagName = tagName || "td"
@@ -38,7 +34,7 @@ insertCheckbox = (tableRow, id, tagName)->
   tableRow.prepend(td)
   check
 
-#### —v‘f‚Ì”»’è
+#### è¦ç´ ã®åˆ¤å®š
 
 isArchiveButton = (button)->
   button.attr("name") == "archiveButton"
@@ -46,7 +42,7 @@ isArchiveButton = (button)->
 isShipButton = (button)->
   button.attr("name") == "closeOrderButton"
 
-#### ƒ{ƒ^ƒ“‰Ÿ‰ºŒã‚Ìˆ—
+#### ãƒœã‚¿ãƒ³æŠ¼ä¸‹å¾Œã®å‡¦ç†
 
 createArchiveFunction = (button) ->
   -> button.click()
@@ -60,11 +56,11 @@ createShipFunction = (button)->
       button = $(this.contentDocument).find("input[name=shipButton]")
       button.click()
 
-  return func
+  func
 
-#### Šeƒ‚ƒfƒ‹&Viewì¬‚ğs‚¤ƒNƒ‰ƒX
+#### å„ãƒ¢ãƒ‡ãƒ«&Viewä½œæˆã‚’è¡Œã†ã‚¯ãƒ©ã‚¹
 
-# 1–¾×‚ğ•\‚·
+# 1æ˜ç´°ã‚’è¡¨ã™
 class OrderData
   orderNumber:null
   processFunction:null
@@ -87,7 +83,7 @@ class OrderData
       @enabled = checkbox.attr('checked') == "checked"
 
   process:->
-    log "process!! #{@orderNumber}"
+    log "process #{@orderNumber}"
     @processFunction()
 
   getOrderNumber:->
@@ -99,19 +95,13 @@ class OrderData
   getEnabled:->
     @enabled
 
-  setCheck:(enabled)->
-    if(enabled)
-      @enabled = true
-      checkbox = @getCheckbox()
-      checkbox.attr("checked", "checked")
-      checkbox.change()
-    else
-      @enabled = false
-      checkbox = @getCheckbox()
-      checkbox.attr("checked", null)
-      checkbox.change()
+  setCheck:->
+    @enabled = true
+    checkbox = @getCheckbox()
+    checkbox.attr("checked", "checked")
+    checkbox.change()
 
-# •\¦‚³‚ê‚Ä‚¢‚é‘S–¾×‚ğ•\‚·
+# è¡¨ç¤ºã•ã‚Œã¦ã„ã‚‹å…¨æ˜ç´°ã‚’è¡¨ã™
 class OrderDataList
   orderDataList :[]
   all :false
@@ -151,23 +141,16 @@ class OrderDataList
   getOrderDataList:->
     @orderDataList
 
-  setCheck:(all)->
-    if(all)
-      @all = true
-      checkbox = @getCheckbox()
-      checkbox.attr("checked", "checked")
-      checkbox.change()
-    else
-      @all = false
-      checkbox = @getCheckbox()
-      checkbox.attr("checked", null)
-      checkbox.change()
-
   save:(processList)->
     localStorage["processList"] = processList
 
+  setCheck:->
+    @all = true
+    checkbox = @getCheckbox()
+    checkbox.attr("checked", "checked")
+    checkbox.change()
 
-# ‰æ–Ê‰º•”‚ÉArchiveƒ{ƒ^ƒ“‚ğ•\¦
+# ç”»é¢ä¸‹éƒ¨ã«Archiveãƒœã‚¿ãƒ³ã‚’è¡¨ç¤º
 class ProcessView
   orderDataList:{}
 
@@ -178,16 +161,17 @@ class ProcessView
 
     # construct UI
     footerRow = pickupFooterRow()
-    button = $("<input type=\"button\" value=\"Archive\" />")
+    button = $("<input type=\"button\" value=\"Archive\" id=\"vv-archive\" />")
     button.click => @orderDataList.process()
     footerRow.prepend button
 
+  restoreState: ->
     # restore state from localStorege
     target = localStorage["processList"]
     return unless target?
 
     if target == "all"
-      @orderDataList.setCheck true
+      @orderDataList.setCheck()
     else
       orderNumberList = target.split(",")
       selectedOrderList = []
@@ -198,11 +182,11 @@ class ProcessView
             selectedOrderList.push data
 
       _.map selectedOrderList, (data)->
-        data.setCheck true
+        data.setCheck()
 
-    exec = -> button.click()
+    exec = -> $("#vv-archive").click()
     setTimeout exec, waitTime
 
-#### ÀÛ‚Ìˆ—‚ğŠJn‚·‚é
+#### å®Ÿéš›ã®å‡¦ç†ã‚’é–‹å§‹ã™ã‚‹
 
-new ProcessView()
+new ProcessView().restoreState()
