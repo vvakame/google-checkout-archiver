@@ -3,20 +3,31 @@ fs = require 'fs'
 exec = require('child_process').exec
 spawn = require('child_process').spawn
 
-coffeeWatch = (dest, src) ->
-  callback = (child) ->
-    child.stdout.on 'data', (data) ->
-      util.print data
-      exec "notify-send Cakefile \"#{data}\""
-    child.stderr.on 'data', (data) ->
-      util.print data
-      exec "notify-send \"Cakefile(fail)\" \#{data}\""
+callback = (child) ->
+  child.stdout.on 'data', (data) ->
+    util.print data
+    exec "notify-send Cakefile \"#{data}\""
+  child.stderr.on 'data', (data) ->
+    util.print data
+    exec "notify-send \"Cakefile(fail)\" \#{data}\""
 
+coffeeWatch = (dest, src) ->
   # spawn
   res = [spawn('coffee', ['-cbwl', '-o', dest, src])]
+  res.forEach callback
+
+coffeeCompile = (dest, src)->
+  # spawn
+  res = [spawn('coffee', ['-cbl', '-o', dest, src])]
   res.forEach callback
 
 task 'watch', 'watches and compiles coffee file', ->
   console.log "Spawning coffee watcher..."
 
   coffeeWatch "./js", "./coffee"
+
+task 'compile', 'compiles coffee file', ->
+  console.log "Spawning coffee compiler..."
+
+  coffeeCompile "./js", "./coffee"
+
